@@ -36,15 +36,7 @@
             </nav>
         </form>
         <div class="mt-4">
-            {% for resultado in resultados %}
-            <div class="card mb-3">
-                <div class="card-body">
-                    <p class="card-text similitudBusqueda"><strong>Similitud:</strong> {{ resultado.similitud }}</p>
-                    <p class="card-text">{{ resultado.contenido }}</p>
-                    <h6 class="card-text"><strong>Referencia:</strong> Libro: {{ resultado.libro }}, Capítulo: {{ resultado.capitulo }}, Versículo: {{ resultado.versiculo }}</h6>
-                </div>
-            </div>
-            {% endfor %}
+            <p>No se encontraron resultados para "{{ query }}".</p>
         </div>
     </div>
     <script>

@@ -7,7 +7,6 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
 nltk.download('punkt')
-
 def buscar_unidades_pensamientoDHH(parrafo, similitudUsuario):
     with connection.cursor() as cursor:
         cursor.execute("SELECT contenido, libro, capitulo, versiculos FROM unidades_pensamiento")
@@ -39,12 +38,15 @@ def buscar_unidades_pensamientoDHH(parrafo, similitudUsuario):
                 'capitulo': referencia_similar[1],
                 'versiculo': referencia_similar[2]
             })
-          
-    if(len(unidades_similares) == 0 ):
-        buscar_con_Word2Vec(parrafo,similitudUsuario)
+
+    if len(unidades_similares) == 0:
+        parrafo_resultados = buscar_con_Word2Vec(parrafo)
+        if parrafo_resultados:
+            return buscar_unidades_pensamientoDHH(parrafo_resultados, similitudUsuario)
         
     return unidades_similares
-def buscar_con_Word2Vec(parrafo,similitudUsuario):
+
+def buscar_con_Word2Vec(parrafo):
     palabras = word_tokenize(parrafo)
     resultados_lista = []
     for palabra in palabras:
@@ -57,9 +59,36 @@ def buscar_con_Word2Vec(parrafo,similitudUsuario):
                 similitud = resultado[1]   
                 if similitud >= 0.05:
                     resultados_lista.append(palabra_clave)
-                break 
-    parrafo_resultados = ' '.join(resultados_lista)
-    buscar_unidades_pensamientoDHH(parrafo_resultados,similitudUsuario)
+                    
+    if len(resultados_lista) == 0:
+        parrafo_sinonimos = buscar_y_unir_sinonimos(parrafo)
+        return parrafo_sinonimos
+    else:
+        return ' '.join(resultados_lista)
+
+def buscar_sinonimos(palabra):
+    with connection.cursor() as cursor:
+        query = "SELECT sinonimos FROM sinonimos WHERE palabra = %s"
+        cursor.execute(query, (palabra,))
+        resultado = cursor.fetchone()
+    if resultado:
+        return resultado[0]
+    else:
+        return None
+
+def buscar_y_unir_sinonimos(parrafo):
+    palabras = parrafo.split()
+    todos_sinonimos = []
+    
+    for palabra in palabras:
+        sinonimos = buscar_sinonimos(palabra)
+        if sinonimos:
+            todos_sinonimos.extend(sinonimos.split()) 
+    
+    if todos_sinonimos:
+        return ' '.join(todos_sinonimos)
+    else:
+        return None
 
 def index(request):
     return render(request, 'unidades_pensamientoDHH/index.html')
@@ -73,5 +102,8 @@ def resultados(request):
         except ValueError:
             similitud_usuario = 0.05
         resultados = buscar_unidades_pensamientoDHH(query, similitud_usuario)
-        return render(request,  'unidades_pensamientoDHH/resultados.html', {'resultados': resultados, 'query': query})
+        if not resultados:
+            return render(request, 'unidades_pensamientoDHH/notfound.html', {'query': query})
+        else:
+            return render(request, 'unidades_pensamientoDHH/resultados.html', {'resultados': resultados, 'query': query})
     return render(request, 'unidades_pensamientoDHH/index.html')
